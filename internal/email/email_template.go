@@ -13,6 +13,7 @@ import (
 )
 
 type Email struct {
+	Sender    string
 	Recipient string
 	Subject   string
 	TextBody  string
@@ -67,6 +68,7 @@ func NewEmailTemplate(cfg *config.EmailConfig) (*EmailTemplate, error) {
 	copy(recipientDataHeaders, recipientDataRecord)
 	return &EmailTemplate{
 		mutex:                sync.Mutex{},
+		sender:               cfg.Sender,
 		subjectTemplate:      subjectTemplate,
 		textBodyTemplate:     textBodyTemplate,
 		htmlBodyTemplate:     htmlBodyTemplate,
@@ -80,6 +82,7 @@ func NewEmailTemplate(cfg *config.EmailConfig) (*EmailTemplate, error) {
 
 type EmailTemplate struct {
 	mutex                sync.Mutex
+	sender               string
 	subjectTemplate      *template.Template
 	textBodyTemplate     *template.Template
 	htmlBodyTemplate     *template.Template
@@ -92,7 +95,8 @@ type EmailTemplate struct {
 
 func (t *EmailTemplate) RenderNext() (*Email, error) {
 	// needs mutex because csv reader is configured to reuse record slice and a
-	// shared buffer is used for rendering templates.
+	// shared buffer is used for rendering templates. although never invoked in
+	// parallel, it is still a good practice.
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -129,6 +133,7 @@ func (t *EmailTemplate) RenderNext() (*Email, error) {
 
 	htmlBody := t.renderBuffer.String()
 	return &Email{
+		Sender:    t.sender,
 		Recipient: recipientData[t.recipientColumnName],
 		Subject:   subject,
 		TextBody:  textBody,

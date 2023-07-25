@@ -23,6 +23,7 @@ const (
 )
 
 type EmailConfig struct {
+	Sender                   string
 	SubjectFile              string
 	TextBodyFile             string
 	HtmlBodyFile             string
@@ -70,6 +71,7 @@ func setDefaultConfig(v Viper) {
 	})
 
 	v.SetDefault("email", &EmailConfig{
+		Sender:                   "Iris CLI <iris@example.test>",
 		SubjectFile:              "subject.txt",
 		TextBodyFile:             "body.txt",
 		HtmlBodyFile:             "body.html",
