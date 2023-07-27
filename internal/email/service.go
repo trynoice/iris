@@ -11,19 +11,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type EmailBackend interface {
-	Send(e *Email) error
+type Service interface {
+	Send(from string, to string, m *Message) error
 }
 
-type Email struct {
-	Sender    string
-	Recipient string
-	Subject   string
-	TextBody  string
-	HtmlBody  string
-}
-
-func NewAwsSesEmailBackend() (EmailBackend, error) {
+func NewAwsSesService() (Service, error) {
 	s, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -31,37 +23,35 @@ func NewAwsSesEmailBackend() (EmailBackend, error) {
 		return nil, fmt.Errorf("failed to load aws config and credentials: %w", err)
 	}
 
-	return &awsSesEmailBackend{
-		ses: ses.New(s),
-	}, nil
+	return &awsSesService{ses: ses.New(s)}, nil
 }
 
-type awsSesEmailBackend struct {
+type awsSesService struct {
 	ses *ses.SES
 }
 
-func (b *awsSesEmailBackend) Send(e *Email) error {
-	if _, err := b.ses.SendEmail(&ses.SendEmailInput{
-		Source: aws.String(e.Sender),
+func (s *awsSesService) Send(from string, to string, m *Message) error {
+	if _, err := s.ses.SendEmail(&ses.SendEmailInput{
+		Source: aws.String(from),
 		Destination: &ses.Destination{
 			CcAddresses: []*string{},
 			ToAddresses: []*string{
-				aws.String(e.Recipient),
+				aws.String(to),
 			},
 		},
 		Message: &ses.Message{
 			Subject: &ses.Content{
 				Charset: aws.String("utf-8"),
-				Data:    aws.String(e.Subject),
+				Data:    aws.String(m.Subject),
 			},
 			Body: &ses.Body{
 				Text: &ses.Content{
 					Charset: aws.String("utf-8"),
-					Data:    aws.String(e.TextBody),
+					Data:    aws.String(m.TextBody),
 				},
 				Html: &ses.Content{
 					Charset: aws.String("utf-8"),
-					Data:    aws.String(e.HtmlBody),
+					Data:    aws.String(m.HtmlBody),
 				},
 			},
 		},
@@ -72,23 +62,22 @@ func (b *awsSesEmailBackend) Send(e *Email) error {
 	return nil
 }
 
-func NewDryRunEmailBackend(w io.Writer) EmailBackend {
+func NewPrintService(w io.Writer) Service {
 	encoder := yaml.NewEncoder(w)
 	encoder.SetIndent(4)
-	return &dryRunEmailBackend{encoder: encoder}
+	return &printService{encoder: encoder}
 }
 
-type dryRunEmailBackend struct {
+type printService struct {
 	encoder *yaml.Encoder
 }
 
-func (b *dryRunEmailBackend) Send(e *Email) error {
-	if err := b.encoder.Encode(&Email{
-		Sender:    e.Sender,
-		Recipient: e.Recipient,
-		Subject:   wordwrap.WrapString(e.Subject, 80),
-		TextBody:  wordwrap.WrapString(e.TextBody, 80),
-		HtmlBody:  wordwrap.WrapString(e.HtmlBody, 80),
+func (b *printService) Send(from string, to string, m *Message) error {
+	if err := b.encoder.Encode(map[string]string{
+		"to":       to,
+		"subject":  wordwrap.WrapString(m.Subject, 80),
+		"textBody": wordwrap.WrapString(m.TextBody, 80),
+		"htmlBody": wordwrap.WrapString(m.HtmlBody, 80),
 	}); err != nil {
 		return fmt.Errorf("failed to write email: %w", err)
 	}

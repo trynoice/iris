@@ -20,9 +20,9 @@ func main() {
 	v.SetConfigName(configName)
 	v.SetConfigType(configType)
 	v.AddConfigPath(".")
-	_, err := config.Read(v)
+	cfg, err := config.Read(v)
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
+		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
 
@@ -33,6 +33,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand(cmd.InitCommand(configName + "." + configType))
+	rootCmd.AddCommand(cmd.SendCommand(cfg))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
