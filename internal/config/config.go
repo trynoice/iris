@@ -14,12 +14,16 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	AwsSes    *AwsSesBackendConfig `yaml:"awsSes,omitempty"`
+	AwsSes    *AwsSesServiceConfig `yaml:"awsSes,omitempty"`
 	RateLimit int                  `yaml:"rateLimit"`
 	Retries   int                  `yaml:"retries"`
 }
 
-type AwsSesBackendConfig struct{}
+type AwsSesServiceConfig struct {
+	UseSharedConfig bool   `yaml:"useSharedConfig"`
+	Region          string `yaml:"region"`
+	Profile         string `yaml:"profile"`
+}
 
 type MessageConfig struct {
 	Sender                   string `yaml:"sender,omitempty"`
@@ -31,7 +35,9 @@ type MessageConfig struct {
 
 var defaultCfg = &Config{
 	Service: ServiceConfig{
-		AwsSes:    nil,
+		AwsSes: &AwsSesServiceConfig{
+			UseSharedConfig: true,
+		},
 		RateLimit: 14,
 		Retries:   3,
 	},

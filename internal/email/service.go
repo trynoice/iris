@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
-	"github.com/mitchellh/go-wordwrap"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"go.uber.org/ratelimit"
-	"gopkg.in/yaml.v3"
+	"golang.org/x/term"
 )
 
 type Service interface {
@@ -18,10 +21,23 @@ type Service interface {
 
 type ServiceOption func(upstream Service) Service
 
-func NewAwsSesService(opts ...ServiceOption) (Service, error) {
-	s, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
+func NewAwsSesService(cfg *config.AwsSesServiceConfig, opts ...ServiceOption) (Service, error) {
+	sessionOpts := session.Options{}
+	if cfg.UseSharedConfig {
+		sessionOpts.SharedConfigState = session.SharedConfigEnable
+	} else {
+		sessionOpts.SharedConfigState = session.SharedConfigDisable
+	}
+
+	if cfg.Region != "" {
+		sessionOpts.Config.Region = aws.String(cfg.Region)
+	}
+
+	if cfg.Profile != "" {
+		sessionOpts.Config.Credentials = credentials.NewSharedCredentials("", cfg.Profile)
+	}
+
+	s, err := session.NewSessionWithOptions(sessionOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load aws config and credentials: %w", err)
 	}
@@ -66,26 +82,33 @@ func (s *awsSesService) Send(from string, to string, m *Message) error {
 }
 
 func NewPrintService(w io.Writer, opts ...ServiceOption) Service {
-	encoder := yaml.NewEncoder(w)
-	encoder.SetIndent(4)
-	return applyOptions(&printService{encoder: encoder}, opts...)
+	return applyOptions(&printService{w: w}, opts...)
 }
 
 type printService struct {
-	encoder *yaml.Encoder
+	w io.Writer
 }
 
-func (b *printService) Send(from string, to string, m *Message) error {
-	if err := b.encoder.Encode(map[string]string{
-		"to":       to,
-		"subject":  wordwrap.WrapString(m.Subject, 80),
-		"textBody": wordwrap.WrapString(m.TextBody, 80),
-		"htmlBody": wordwrap.WrapString(m.HtmlBody, 80),
-	}); err != nil {
-		return fmt.Errorf("failed to write email: %w", err)
+func (s *printService) Send(from string, to string, m *Message) error {
+	w, _, err := term.GetSize(0)
+	if err != nil {
+		w = 60
+	} else {
+		w -= 20 // `| 0 | HTML Body |  |` = 20 chars
 	}
 
-	return nil
+	tw := table.NewWriter()
+	for _, row := range []table.Row{
+		{"Subject", text.WrapSoft(m.Subject, w)},
+		{"Text Body", text.WrapSoft(m.TextBody, w)},
+		{"HTML Body", text.WrapSoft(m.HtmlBody, w)},
+	} {
+		tw.AppendRow(row)
+		tw.AppendSeparator()
+	}
+
+	_, err = fmt.Fprintln(s.w, tw.Render())
+	return err
 }
 
 func WithRateLimit(frequency int) ServiceOption {
