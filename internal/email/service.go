@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/mitchellh/go-wordwrap"
+	"go.uber.org/ratelimit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,7 +16,9 @@ type Service interface {
 	Send(from string, to string, m *Message) error
 }
 
-func NewAwsSesService() (Service, error) {
+type ServiceOption func(upstream Service) Service
+
+func NewAwsSesService(opts ...ServiceOption) (Service, error) {
 	s, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -23,7 +26,7 @@ func NewAwsSesService() (Service, error) {
 		return nil, fmt.Errorf("failed to load aws config and credentials: %w", err)
 	}
 
-	return &awsSesService{ses: ses.New(s)}, nil
+	return applyOptions(&awsSesService{ses: ses.New(s)}, opts...), nil
 }
 
 type awsSesService struct {
@@ -62,10 +65,10 @@ func (s *awsSesService) Send(from string, to string, m *Message) error {
 	return nil
 }
 
-func NewPrintService(w io.Writer) Service {
+func NewPrintService(w io.Writer, opts ...ServiceOption) Service {
 	encoder := yaml.NewEncoder(w)
 	encoder.SetIndent(4)
-	return &printService{encoder: encoder}
+	return applyOptions(&printService{encoder: encoder}, opts...)
 }
 
 type printService struct {
@@ -83,4 +86,57 @@ func (b *printService) Send(from string, to string, m *Message) error {
 	}
 
 	return nil
+}
+
+func WithRateLimit(frequency int) ServiceOption {
+	return func(upstream Service) Service {
+		return &rateLimitedService{
+			upstream: upstream,
+			limiter:  ratelimit.New(frequency),
+		}
+	}
+}
+
+type rateLimitedService struct {
+	upstream Service
+	limiter  ratelimit.Limiter
+}
+
+func (s *rateLimitedService) Send(from string, to string, m *Message) error {
+	s.limiter.Take()
+	return s.upstream.Send(from, to, m)
+}
+
+func WithRetries(retryCount int) ServiceOption {
+	return func(upstream Service) Service {
+		return &retryService{
+			upstream:   upstream,
+			retryCount: retryCount,
+		}
+	}
+}
+
+type retryService struct {
+	upstream   Service
+	retryCount int
+}
+
+func (s *retryService) Send(from string, to string, m *Message) error {
+	var err error
+	for i := 0; i < s.retryCount; i++ {
+		err = s.upstream.Send(from, to, m)
+		if err == nil {
+			break
+		}
+	}
+
+	return err
+}
+
+func applyOptions(upstream Service, opts ...ServiceOption) Service {
+	s := upstream
+	for _, option := range opts {
+		s = option(s)
+	}
+	return s
 }

@@ -24,7 +24,7 @@ func SendCommand(cfg *config.Config) *cobra.Command {
 			}
 
 			defer r.Close()
-			s := email.NewPrintService(cmd.OutOrStdout())
+			s := email.NewPrintService(cmd.OutOrStdout(), email.WithRateLimit(1))
 			for {
 				recipientData, err := r.Read()
 				if err == io.EOF {
