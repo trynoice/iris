@@ -9,18 +9,18 @@ import (
 )
 
 type Config struct {
-	Backend BackendConfig `yaml:"backend,omitempty"`
-	Email   EmailConfig   `yaml:"email,omitempty"`
+	Service ServiceConfig `yaml:"service,omitempty"`
+	Message MessageConfig `yaml:"message,omitempty"`
 }
 
-type BackendConfig struct {
+type ServiceConfig struct {
 	AwsSes    *AwsSesBackendConfig `yaml:"awsSes,omitempty"`
 	RateLimit uint                 `yaml:"rateLimit,omitempty"`
 }
 
 type AwsSesBackendConfig struct{}
 
-type EmailConfig struct {
+type MessageConfig struct {
 	Sender                   string `yaml:"sender,omitempty"`
 	DefaultDataCsvFile       string `yaml:"defaultDataCsvFile,omitempty"`
 	RecipientDataCsvFile     string `yaml:"recipientDataCsvFile,omitempty"`
@@ -28,11 +28,11 @@ type EmailConfig struct {
 }
 
 var defaultCfg = &Config{
-	Backend: BackendConfig{
+	Service: ServiceConfig{
 		AwsSes:    nil,
 		RateLimit: 14,
 	},
-	Email: EmailConfig{
+	Message: MessageConfig{
 		Sender:                   "Iris CLI <iris@example.test>",
 		DefaultDataCsvFile:       "default.csv",
 		RecipientDataCsvFile:     "recipient.csv",
@@ -44,8 +44,8 @@ var defaultCfg = &Config{
 // falls back to sensible defaults if the entire config file or some config
 // options are not provided.
 func Read(v Viper) (*Config, error) {
-	v.SetDefault("backend", &defaultCfg.Backend)
-	v.SetDefault("email", &defaultCfg.Email)
+	v.SetDefault("service", &defaultCfg.Service)
+	v.SetDefault("message", &defaultCfg.Message)
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)

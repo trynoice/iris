@@ -18,7 +18,7 @@ func SendCommand(cfg *config.Config) *cobra.Command {
 				return err
 			}
 
-			r, err := email.NewDataReader(cfg.Email.DefaultDataCsvFile, cfg.Email.RecipientDataCsvFile)
+			r, err := email.NewDataReader(cfg.Message.DefaultDataCsvFile, cfg.Message.RecipientDataCsvFile)
 			if err != nil {
 				return err
 			}
@@ -38,8 +38,8 @@ func SendCommand(cfg *config.Config) *cobra.Command {
 					return err
 				}
 
-				sender := cfg.Email.Sender
-				recipient := recipientData[cfg.Email.RecipientEmailColumnName]
+				sender := cfg.Message.Sender
+				recipient := recipientData[cfg.Message.RecipientEmailColumnName]
 				if err := s.Send(sender, recipient, e); err != nil {
 					return err
 				}
