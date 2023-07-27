@@ -2,41 +2,50 @@ package config
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Backend BackendConfig
-	Email   EmailConfig
+	Backend BackendConfig `yaml:"backend,omitempty"`
+	Email   EmailConfig   `yaml:"email,omitempty"`
 }
 
 type BackendConfig struct {
-	Provider  BackendProvider
-	RateLimit uint
+	AwsSes    *AwsSesBackendConfig `yaml:"awsSes,omitempty"`
+	RateLimit uint                 `yaml:"rateLimit,omitempty"`
 }
 
-type BackendProvider string
-
-const (
-	AwsSes BackendProvider = "aws-ses"
-)
+type AwsSesBackendConfig struct{}
 
 type EmailConfig struct {
-	Sender                   string
-	SubjectFile              string
-	TextBodyFile             string
-	HtmlBodyFile             string
-	DefaultDataCsvFile       string
-	RecipientDataCsvFile     string
-	RecipientEmailColumnName string
+	Sender                   string `yaml:"sender,omitempty"`
+	DefaultDataCsvFile       string `yaml:"defaultDataCsvFile,omitempty"`
+	RecipientDataCsvFile     string `yaml:"recipientDataCsvFile,omitempty"`
+	RecipientEmailColumnName string `yaml:"recipientEmailColumnName,omitempty"`
+}
+
+var defaultCfg = &Config{
+	Backend: BackendConfig{
+		AwsSes:    nil,
+		RateLimit: 14,
+	},
+	Email: EmailConfig{
+		Sender:                   "Iris CLI <iris@example.test>",
+		DefaultDataCsvFile:       "default.csv",
+		RecipientDataCsvFile:     "recipient.csv",
+		RecipientEmailColumnName: "Recipient",
+	},
 }
 
 // Read attempts to read the config file in the current working directory. It
 // falls back to sensible defaults if the entire config file or some config
 // options are not provided.
 func Read(v Viper) (*Config, error) {
-	setDefaultConfig(v)
+	v.SetDefault("backend", &defaultCfg.Backend)
+	v.SetDefault("email", &defaultCfg.Email)
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -51,32 +60,25 @@ func Read(v Viper) (*Config, error) {
 	return cfg, nil
 }
 
-// WriteDefault attempts to write a config file with default options in the
-// current working directory. It doesn't overwrite an existing config file.
-func WriteDefault(v Viper) error {
-	setDefaultConfig(v)
-	if err := v.SafeWriteConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileAlreadyExistsError); !ok {
-			return fmt.Errorf("failed to write config: %w", err)
-		}
+// WriteDefault attempts to write the default config options to a file at the
+// give path. If the file already exists, the function returns without writing
+// to it or raising an error.
+func WriteDefault(file string) error {
+	const errFmt = "failed to write config: %w"
+	f, err := os.Create(file)
+	if err != nil {
+		return fmt.Errorf(errFmt, err)
+	}
+
+	defer f.Close()
+	e := yaml.NewEncoder(f)
+	if err := e.Encode(defaultCfg); err != nil {
+		return fmt.Errorf(errFmt, err)
+	}
+
+	if err := e.Close(); err != nil {
+		return fmt.Errorf(errFmt, err)
 	}
 
 	return nil
-}
-
-func setDefaultConfig(v Viper) {
-	v.SetDefault("backend", &BackendConfig{
-		Provider:  AwsSes,
-		RateLimit: 14,
-	})
-
-	v.SetDefault("email", &EmailConfig{
-		Sender:                   "Iris CLI <iris@example.test>",
-		SubjectFile:              "subject.txt",
-		TextBodyFile:             "body.txt",
-		HtmlBodyFile:             "body.html",
-		DefaultDataCsvFile:       "default.csv",
-		RecipientDataCsvFile:     "recipient.csv",
-		RecipientEmailColumnName: "Recipient",
-	})
 }

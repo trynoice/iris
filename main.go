@@ -10,10 +10,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	configName = ".iris"
+	configType = "yaml"
+)
+
 func main() {
 	v := viper.New()
-	v.SetConfigName(".iris")
-	v.SetConfigType("yaml")
+	v.SetConfigName(configName)
+	v.SetConfigType(configType)
 	v.AddConfigPath(".")
 	_, err := config.Read(v)
 	if err != nil {
@@ -22,11 +27,12 @@ func main() {
 	}
 
 	rootCmd := &cobra.Command{
-		Use:   "iris",
-		Short: "A CLI tool for dispatching templated emails",
+		Use:          "iris",
+		Short:        "A CLI tool for dispatching templated emails",
+		SilenceUsage: true,
 	}
 
-	rootCmd.AddCommand(cmd.InitCommand(v))
+	rootCmd.AddCommand(cmd.InitCommand(configName + "." + configType))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

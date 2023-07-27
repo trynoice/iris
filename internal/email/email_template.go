@@ -12,26 +12,18 @@ import (
 	"github.com/ashutoshgngwr/iris-cli/internal/config"
 )
 
-type Email struct {
-	Sender    string
-	Recipient string
-	Subject   string
-	TextBody  string
-	HtmlBody  string
-}
-
 func NewEmailTemplate(cfg *config.EmailConfig) (*EmailTemplate, error) {
-	subjectTemplate, err := template.ParseFiles(cfg.SubjectFile)
+	subjectTemplate, err := template.ParseFiles("TODO")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse subject template: %w", err)
 	}
 
-	textBodyTemplate, err := template.ParseFiles(cfg.TextBodyFile)
+	textBodyTemplate, err := template.ParseFiles("TODO")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse text body template: %w", err)
 	}
 
-	htmlBodyTemplate, err := template.ParseFiles(cfg.HtmlBodyFile)
+	htmlBodyTemplate, err := template.ParseFiles("TODO")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse html body template: %w", err)
 	}

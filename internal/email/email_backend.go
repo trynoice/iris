@@ -15,6 +15,14 @@ type EmailBackend interface {
 	Send(e *Email) error
 }
 
+type Email struct {
+	Sender    string
+	Recipient string
+	Subject   string
+	TextBody  string
+	HtmlBody  string
+}
+
 func NewAwsSesEmailBackend() (EmailBackend, error) {
 	s, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
