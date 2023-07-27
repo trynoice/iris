@@ -13,7 +13,7 @@ func SendCommand(cfg *config.Config) *cobra.Command {
 		Use:   "send",
 		Short: "Send emails using the working files in the current directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			t, err := email.NewTemplate(".")
+			t, err := email.NewTemplate(".", cfg.Message.MinifyHtml)
 			if err != nil {
 				return err
 			}
@@ -24,7 +24,12 @@ func SendCommand(cfg *config.Config) *cobra.Command {
 			}
 
 			defer r.Close()
-			s := email.NewPrintService(cmd.OutOrStdout(), email.WithRateLimit(1))
+			opts := []email.ServiceOption{
+				email.WithRateLimit(cfg.Service.RateLimit),
+				email.WithRetries(cfg.Service.Retries),
+			}
+
+			s := email.NewPrintService(cmd.OutOrStdout(), opts...)
 			for {
 				recipientData, err := r.Read()
 				if err == io.EOF {

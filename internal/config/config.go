@@ -15,7 +15,8 @@ type Config struct {
 
 type ServiceConfig struct {
 	AwsSes    *AwsSesBackendConfig `yaml:"awsSes,omitempty"`
-	RateLimit uint                 `yaml:"rateLimit,omitempty"`
+	RateLimit int                  `yaml:"rateLimit"`
+	Retries   int                  `yaml:"retries"`
 }
 
 type AwsSesBackendConfig struct{}
@@ -25,18 +26,21 @@ type MessageConfig struct {
 	DefaultDataCsvFile       string `yaml:"defaultDataCsvFile,omitempty"`
 	RecipientDataCsvFile     string `yaml:"recipientDataCsvFile,omitempty"`
 	RecipientEmailColumnName string `yaml:"recipientEmailColumnName,omitempty"`
+	MinifyHtml               bool   `yaml:"minifyHtml"`
 }
 
 var defaultCfg = &Config{
 	Service: ServiceConfig{
 		AwsSes:    nil,
 		RateLimit: 14,
+		Retries:   3,
 	},
 	Message: MessageConfig{
 		Sender:                   "Iris CLI <iris@example.test>",
 		DefaultDataCsvFile:       "default.csv",
 		RecipientDataCsvFile:     "recipient.csv",
 		RecipientEmailColumnName: "Recipient",
+		MinifyHtml:               true,
 	},
 }
 

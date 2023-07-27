@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"sync"
 	"text/template"
+
+	"github.com/tdewolff/minify/v2"
+	"github.com/tdewolff/minify/v2/html"
 )
 
 const (
@@ -14,7 +17,7 @@ const (
 	htmlBodyFile = "body.html"
 )
 
-func NewTemplate(dir string) (*Template, error) {
+func NewTemplate(dir string, minifyHtml bool) (*Template, error) {
 	template, err := template.ParseFiles(
 		filepath.Join(dir, subjectFile),
 		filepath.Join(dir, textBodyFile),
@@ -24,17 +27,28 @@ func NewTemplate(dir string) (*Template, error) {
 		return nil, fmt.Errorf("failed to parse email templates: %w", err)
 	}
 
+	var m *minify.M
+	if minifyHtml {
+		m = minify.New()
+		m.Add("text/html", &html.Minifier{
+			KeepDocumentTags: true,
+			KeepEndTags:      true,
+		})
+	}
+
 	return &Template{
-		mutex:    sync.Mutex{},
-		template: template,
-		buffer:   &bytes.Buffer{},
+		mutex:        sync.Mutex{},
+		template:     template,
+		buffer:       &bytes.Buffer{},
+		htmlMinifier: m,
 	}, nil
 }
 
 type Template struct {
-	mutex    sync.Mutex
-	template *template.Template
-	buffer   *bytes.Buffer
+	mutex        sync.Mutex
+	template     *template.Template
+	buffer       *bytes.Buffer
+	htmlMinifier *minify.M
 }
 
 func (t *Template) Render(data any) (*Message, error) {
@@ -62,5 +76,12 @@ func (t *Template) Render(data any) (*Message, error) {
 	}
 
 	m.HtmlBody = t.buffer.String()
+	if t.htmlMinifier != nil {
+		var err error
+		m.HtmlBody, err = t.htmlMinifier.String("text/html", m.HtmlBody)
+		if err != nil {
+			return nil, fmt.Errorf("failed to minify html body: %w", err)
+		}
+	}
 	return m, nil
 }

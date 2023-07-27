@@ -123,7 +123,7 @@ type retryService struct {
 
 func (s *retryService) Send(from string, to string, m *Message) error {
 	var err error
-	for i := 0; i < s.retryCount; i++ {
+	for i := 0; i <= s.retryCount; i++ {
 		err = s.upstream.Send(from, to, m)
 		if err == nil {
 			break
