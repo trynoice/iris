@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/trynoice/iris/internal/config"
 	"gopkg.in/yaml.v3"
 )
 

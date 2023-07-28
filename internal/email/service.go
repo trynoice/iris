@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/trynoice/iris/internal/config"
 	"go.uber.org/ratelimit"
 	"golang.org/x/term"
 )

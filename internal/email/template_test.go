@@ -3,8 +3,8 @@ package email
 import (
 	"testing"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/trynoice/iris/internal/testutil"
 )
 
 func TestTemplate(t *testing.T) {

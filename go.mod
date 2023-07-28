@@ -1,16 +1,16 @@
-module github.com/ashutoshgngwr/iris-cli
+module github.com/trynoice/iris
 
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.44.307
+	github.com/aws/aws-sdk-go v1.44.312
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tdewolff/minify/v2 v2.12.7
 	go.uber.org/ratelimit v0.3.0
-	golang.org/x/term v0.1.0
+	golang.org/x/term v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -34,6 +34,6 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tdewolff/parse/v2 v2.6.6 // indirect
 	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )

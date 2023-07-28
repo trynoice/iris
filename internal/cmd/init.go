@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/trynoice/iris/internal/config"
 )
 
 var defaultEmailFiles = map[string]string{

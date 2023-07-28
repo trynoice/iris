@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/cmd"
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
-	"github.com/ashutoshgngwr/iris-cli/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/trynoice/iris/internal/cmd"
+	"github.com/trynoice/iris/internal/config"
+	"github.com/trynoice/iris/internal/testutil"
 )
 
 func TestSendCommand(t *testing.T) {

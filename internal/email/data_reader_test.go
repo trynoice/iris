@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/email"
-	"github.com/ashutoshgngwr/iris-cli/internal/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/trynoice/iris/internal/email"
+	"github.com/trynoice/iris/internal/testutil"
 )
 
 func TestDataReader(t *testing.T) {

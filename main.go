@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/cmd"
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/trynoice/iris/internal/cmd"
+	"github.com/trynoice/iris/internal/config"
 )
 
 const (

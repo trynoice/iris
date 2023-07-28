@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/config"
-	"github.com/ashutoshgngwr/iris-cli/internal/email"
 	"github.com/spf13/cobra"
+	"github.com/trynoice/iris/internal/config"
+	"github.com/trynoice/iris/internal/email"
 )
 
 func SendCommand(cfg *config.Config) *cobra.Command {

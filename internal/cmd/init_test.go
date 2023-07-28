@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/cmd"
-	"github.com/ashutoshgngwr/iris-cli/internal/testutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/trynoice/iris/internal/cmd"
+	"github.com/trynoice/iris/internal/testutil"
 )
 
 func TestInitCommand(t *testing.T) {

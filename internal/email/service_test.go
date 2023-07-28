@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ashutoshgngwr/iris-cli/internal/email"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/trynoice/iris/internal/email"
 )
 
 func TestAwsSesService(t *testing.T) {
