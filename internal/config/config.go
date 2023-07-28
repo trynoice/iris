@@ -15,14 +15,14 @@ type Config struct {
 
 type ServiceConfig struct {
 	AwsSes    *AwsSesServiceConfig `yaml:"awsSes,omitempty"`
-	RateLimit int                  `yaml:"rateLimit"`
-	Retries   int                  `yaml:"retries"`
+	RateLimit int                  `yaml:"rateLimit,omitempty"`
+	Retries   int                  `yaml:"retries,omitempty"`
 }
 
 type AwsSesServiceConfig struct {
-	UseSharedConfig bool   `yaml:"useSharedConfig"`
-	Region          string `yaml:"region"`
-	Profile         string `yaml:"profile"`
+	UseSharedConfig bool   `yaml:"useSharedConfig,omitempty"`
+	Region          string `yaml:"region,omitempty"`
+	Profile         string `yaml:"profile,omitempty"`
 }
 
 type MessageConfig struct {
@@ -30,32 +30,14 @@ type MessageConfig struct {
 	DefaultDataCsvFile       string `yaml:"defaultDataCsvFile,omitempty"`
 	RecipientDataCsvFile     string `yaml:"recipientDataCsvFile,omitempty"`
 	RecipientEmailColumnName string `yaml:"recipientEmailColumnName,omitempty"`
-	MinifyHtml               bool   `yaml:"minifyHtml"`
-}
-
-var defaultCfg = &Config{
-	Service: ServiceConfig{
-		AwsSes: &AwsSesServiceConfig{
-			UseSharedConfig: true,
-		},
-		RateLimit: 14,
-		Retries:   3,
-	},
-	Message: MessageConfig{
-		Sender:                   "Iris CLI <iris@example.test>",
-		DefaultDataCsvFile:       "default.csv",
-		RecipientDataCsvFile:     "recipient.csv",
-		RecipientEmailColumnName: "Recipient",
-		MinifyHtml:               true,
-	},
+	MinifyHtml               bool   `yaml:"minifyHtml,omitempty"`
 }
 
 // Read attempts to read the config file in the current working directory. It
 // falls back to sensible defaults if the entire config file or some config
 // options are not provided.
-func Read(v Viper) (*Config, error) {
-	v.SetDefault("service", &defaultCfg.Service)
-	v.SetDefault("message", &defaultCfg.Message)
+func Read(v *viper.Viper) (*Config, error) {
+	setDefaultConfig(v)
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -71,9 +53,15 @@ func Read(v Viper) (*Config, error) {
 }
 
 // WriteDefault attempts to write the default config options to a file at the
-// give path. If the file already exists, the function returns without writing
-// to it or raising an error.
-func WriteDefault(file string) error {
+// give path.
+func WriteDefault(v *viper.Viper, file string) error {
+	setDefaultConfig(v)
+	cfg := &Config{}
+	if err := v.Unmarshal(cfg); err != nil {
+		return err
+	}
+
+	// using yaml encoder to write the configuration file in `camelCase`.
 	const errFmt = "failed to write config: %w"
 	f, err := os.Create(file)
 	if err != nil {
@@ -82,7 +70,7 @@ func WriteDefault(file string) error {
 
 	defer f.Close()
 	e := yaml.NewEncoder(f)
-	if err := e.Encode(defaultCfg); err != nil {
+	if err := e.Encode(cfg); err != nil {
 		return fmt.Errorf(errFmt, err)
 	}
 
@@ -91,4 +79,15 @@ func WriteDefault(file string) error {
 	}
 
 	return nil
+}
+
+func setDefaultConfig(v *viper.Viper) {
+	v.SetDefault("service.awsSes.useSharedConfig", true)
+	v.SetDefault("service.rateLimit", 14)
+	v.SetDefault("service.retries", 3)
+	v.SetDefault("message.sender", "Iris CLI <iris@example.test>")
+	v.SetDefault("message.defaultDataCsvFile", "default.csv")
+	v.SetDefault("message.recipientDataCsvFile", "recipient.csv")
+	v.SetDefault("message.recipientEmailColumnName", "Recipient")
+	v.SetDefault("message.minifyHtml", true)
 }

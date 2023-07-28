@@ -7,6 +7,7 @@ import (
 
 	"github.com/ashutoshgngwr/iris-cli/internal/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var defaultEmailFiles = map[string]string{
@@ -35,7 +36,7 @@ You can inject data into templates, e.g. a date - {{ .Date }} or your email - {{
 	"recipient.csv": "Name,Recipient\nJohn,hello@example.test",
 }
 
-func InitCommand(configFileName string) *cobra.Command {
+func InitCommand(v *viper.Viper, configFileName string) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "init <dir>",
 		Short: "Create working files in the given directory",
@@ -51,7 +52,7 @@ func InitCommand(configFileName string) *cobra.Command {
 			cfgFile := filepath.Join(args[0], configFileName)
 			if notExists(cfgFile) {
 				cmd.Println("creating file", cfgFile)
-				if err := config.WriteDefault(cfgFile); err != nil {
+				if err := config.WriteDefault(v, cfgFile); err != nil {
 					return fmt.Errorf("failed to write default config: %w", err)
 				}
 			}

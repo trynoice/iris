@@ -32,7 +32,7 @@ func main() {
 		SilenceUsage: true,
 	}
 
-	rootCmd.AddCommand(cmd.InitCommand(configName + "." + configType))
+	rootCmd.AddCommand(cmd.InitCommand(v, configName+"."+configType))
 	rootCmd.AddCommand(cmd.SendCommand(cfg))
 
 	if err := rootCmd.Execute(); err != nil {

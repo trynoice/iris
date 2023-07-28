@@ -42,15 +42,28 @@ func NewAwsSesService(cfg *config.AwsSesServiceConfig, opts ...ServiceOption) (S
 		return nil, fmt.Errorf("failed to load aws config and credentials: %w", err)
 	}
 
-	return applyOptions(&awsSesService{ses: ses.New(s)}, opts...), nil
+	return ApplyOptions(&awsSesService{client: ses.New(s)}, opts...), nil
+}
+
+func NewAwsSesServiceWithClient(client AwsSesClient, opts ...ServiceOption) Service {
+	return ApplyOptions(&awsSesService{client: client}, opts...)
+}
+
+type AwsSesClient interface {
+	// SendEmail API operation for Amazon Simple Email Service.
+	SendEmail(input *ses.SendEmailInput) (*ses.SendEmailOutput, error)
 }
 
 type awsSesService struct {
-	ses *ses.SES
+	client AwsSesClient
 }
 
 func (s *awsSesService) Send(from string, to string, m *Message) error {
-	if _, err := s.ses.SendEmail(&ses.SendEmailInput{
+	if m == nil {
+		return fmt.Errorf("message must not be nil")
+	}
+
+	if _, err := s.client.SendEmail(&ses.SendEmailInput{
 		Source: aws.String(from),
 		Destination: &ses.Destination{
 			CcAddresses: []*string{},
@@ -82,7 +95,7 @@ func (s *awsSesService) Send(from string, to string, m *Message) error {
 }
 
 func NewPrintService(w io.Writer, opts ...ServiceOption) Service {
-	return applyOptions(&printService{w: w}, opts...)
+	return ApplyOptions(&printService{w: w}, opts...)
 }
 
 type printService struct {
@@ -90,6 +103,10 @@ type printService struct {
 }
 
 func (s *printService) Send(from string, to string, m *Message) error {
+	if m == nil {
+		return fmt.Errorf("message must not be nil")
+	}
+
 	w, _, err := term.GetSize(0)
 	if err != nil {
 		w = 60
@@ -156,7 +173,7 @@ func (s *retryService) Send(from string, to string, m *Message) error {
 	return err
 }
 
-func applyOptions(upstream Service, opts ...ServiceOption) Service {
+func ApplyOptions(upstream Service, opts ...ServiceOption) Service {
 	s := upstream
 	for _, option := range opts {
 		s = option(s)
