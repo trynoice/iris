@@ -1,0 +1,82 @@
+name: Go
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "**"
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: stable
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: stable
+      - run: go test -race -v -coverprofile=coverage.out ./...
+      - uses: codecov/codecov-action@v3
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # build and publish in parallel: linux/386, linux/amd64, linux/arm64, windows/386, windows/amd64, darwin/amd64, darwin/arm64
+        goos: [linux, windows, darwin]
+        goarch: ["386", amd64, arm64]
+        exclude:
+          - goarch: "386"
+            goos: darwin
+          - goarch: arm64
+            goos: windows
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v3
+      - run: git fetch --prune --unshallow --tags -f
+      - id: tag_info
+        run: |
+          export TAG_NAME="${GITHUB_REF/'refs/tags/'/''}"
+          {
+            echo "name=$TAG_NAME";
+            echo "body<<EOF";
+            git tag  --list --format='%(contents:body)' $TAG_NAME;
+            echo "EOF";
+          } >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          name: ${{ steps.tag_info.outputs.name }}
+          body: ${{ steps.tag_info.outputs.body }}
+      - uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.BOT_PAT }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: -s -w -extldflags '-static'
+          release_tag: ${{ steps.tag_info.outputs.name }}
+          compress_assets: off
