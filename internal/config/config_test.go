@@ -13,11 +13,8 @@ import (
 )
 
 func TestRead(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "iris-config-test-*")
-	require.Nil(t, err)
-	defer os.RemoveAll(tmpDir)
-
 	t.Run("WithoutConfigFile", func(t *testing.T) {
+		tmpDir := t.TempDir()
 		v := viper.New()
 		v.AddConfigPath(tmpDir)
 		v.SetConfigName(".iris")
@@ -27,10 +24,11 @@ func TestRead(t *testing.T) {
 		got, err := config.Read(v)
 		assert.Nil(t, err)
 		assert.NotEmpty(t, got.Service.RateLimit)
-		assert.NotEmpty(t, got.Message.Sender)
+		assert.NotEmpty(t, got.Message.MinifyHtml)
 	})
 
 	t.Run("WithConfigFile", func(t *testing.T) {
+		tmpDir := t.TempDir()
 		want := &config.Config{
 			Service: config.ServiceConfig{
 				RateLimit: 1,
@@ -60,22 +58,31 @@ func TestRead(t *testing.T) {
 
 		// must return default values
 		assert.NotEmpty(t, got.Service.Retries)
-		assert.NotEmpty(t, got.Message.RecipientEmailColumnName)
+		assert.NotEmpty(t, got.Message.MinifyHtml)
 	})
 }
 
-func TestWriteDefault(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "iris-config-test-*")
-	require.Nil(t, err)
-	defer os.RemoveAll(tmpDir)
+func TestWrite(t *testing.T) {
+	want := &config.Config{
+		Service: config.ServiceConfig{
+			AwsSes: &config.AwsSesServiceConfig{
+				UseSharedConfig: true,
+			},
+			RateLimit: 1,
+			Retries:   1,
+		},
+		Message: config.MessageConfig{
+			Sender:                   "test-sender",
+			DefaultDataCsvFile:       "default.csv",
+			RecipientDataCsvFile:     "recipients.csv",
+			RecipientEmailColumnName: "Email",
+			MinifyHtml:               false,
+		},
+	}
 
-	v := viper.New()
-	v.AddConfigPath(tmpDir)
-	v.SetConfigName(".iris")
-	v.SetConfigType("yaml")
-
+	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, ".iris.yaml")
-	err = config.WriteDefault(v, cfgFile)
+	err := config.Write(want, cfgFile)
 	assert.Nil(t, err)
 
 	gotData, err := os.ReadFile(cfgFile)
@@ -84,6 +91,5 @@ func TestWriteDefault(t *testing.T) {
 	got := &config.Config{}
 	err = yaml.Unmarshal(gotData, got)
 	require.Nil(t, err)
-	assert.NotEmpty(t, got.Service.Retries)
-	assert.NotEmpty(t, got.Message.RecipientEmailColumnName)
+	assert.Equal(t, want, got)
 }

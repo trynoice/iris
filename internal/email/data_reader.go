@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
-func NewDataReader(defaultFile string, dataFile string) (*DataReader, error) {
+func NewDataReader(dir string, defaultFileName string, dataFileName string) (*DataReader, error) {
 	defaultValues := map[string]string{}
-	if file, err := os.Open(defaultFile); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to open default csv: %w", err)
-	} else if file != nil {
+	if defaultFileName != "" {
+		file, err := os.Open(filepath.Join(dir, defaultFileName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to open default csv: %w", err)
+		}
+
 		defer file.Close()
 		rows, err := csv.NewReader(file).ReadAll()
 		if err != nil {
@@ -28,12 +32,12 @@ func NewDataReader(defaultFile string, dataFile string) (*DataReader, error) {
 		}
 	}
 
-	dataFh, err := os.Open(dataFile)
+	dataFile, err := os.Open(filepath.Join(dir, dataFileName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open data csv: %w", err)
 	}
 
-	reader := csv.NewReader(dataFh)
+	reader := csv.NewReader(dataFile)
 	reader.ReuseRecord = true
 	row, err := reader.Read()
 	if err != nil {
@@ -45,7 +49,7 @@ func NewDataReader(defaultFile string, dataFile string) (*DataReader, error) {
 	return &DataReader{
 		mutex:         sync.Mutex{},
 		defaultValues: defaultValues,
-		fileCloser:    dataFh,
+		fileCloser:    dataFile,
 		reader:        reader,
 		headers:       headers,
 	}, nil

@@ -20,3 +20,12 @@ func CreateFile(t *testing.T, dir string, file string, content string) {
 		os.Remove(p)
 	})
 }
+
+func Chdir(t *testing.T, dir string) {
+	original, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(original))
+	})
+}

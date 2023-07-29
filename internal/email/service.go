@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/mitchellh/go-wordwrap"
+	"github.com/olekukonko/tablewriter"
 	"github.com/trynoice/iris/internal/config"
 	"go.uber.org/ratelimit"
 	"golang.org/x/term"
@@ -42,7 +42,7 @@ func NewAwsSesService(cfg *config.AwsSesServiceConfig, opts ...ServiceOption) (S
 		return nil, fmt.Errorf("failed to load aws config and credentials: %w", err)
 	}
 
-	return ApplyOptions(&awsSesService{client: ses.New(s)}, opts...), nil
+	return NewAwsSesServiceWithClient(ses.New(s), opts...), nil
 }
 
 func NewAwsSesServiceWithClient(client AwsSesClient, opts ...ServiceOption) Service {
@@ -107,25 +107,34 @@ func (s *printService) Send(from string, to string, m *Message) error {
 		return fmt.Errorf("message must not be nil")
 	}
 
+	pw := getTerminalWidth(100)
+	// `| HTML Body |  |` = 16 chars is longest for static data in a row
+	if pw > 16 {
+		pw -= 16
+	}
+	if pw > 100 {
+		pw = 100
+	}
+
+	tw := tablewriter.NewWriter(s.w)
+	tw.SetColWidth(pw)
+	tw.SetAutoWrapText(false)
+	tw.SetRowLine(true)
+	tw.AppendBulk([][]string{
+		{"Subject", wordwrap.WrapString(m.Subject, uint(pw))},
+		{"Text Body", wordwrap.WrapString(m.TextBody, uint(pw))},
+		{"HTML Body", wordwrap.WrapString(m.HtmlBody, uint(pw))},
+	})
+	tw.Render()
+	return nil
+}
+
+func getTerminalWidth(defaultW int) int {
 	w, _, err := term.GetSize(0)
 	if err != nil {
-		w = 60
-	} else {
-		w -= 20 // `| 0 | HTML Body |  |` = 20 chars
+		return defaultW
 	}
-
-	tw := table.NewWriter()
-	for _, row := range []table.Row{
-		{"Subject", text.WrapSoft(m.Subject, w)},
-		{"Text Body", text.WrapSoft(m.TextBody, w)},
-		{"HTML Body", text.WrapSoft(m.HtmlBody, w)},
-	} {
-		tw.AppendRow(row)
-		tw.AppendSeparator()
-	}
-
-	_, err = fmt.Fprintln(s.w, tw.Render())
-	return err
+	return w
 }
 
 func WithRateLimit(frequency int) ServiceOption {

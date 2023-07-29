@@ -37,7 +37,10 @@ type MessageConfig struct {
 // falls back to sensible defaults if the entire config file or some config
 // options are not provided.
 func Read(v *viper.Viper) (*Config, error) {
-	setDefaultConfig(v)
+	v.SetDefault("service.rateLimit", 10)
+	v.SetDefault("service.retries", 3)
+	v.SetDefault("message.minifyHtml", true)
+
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -52,42 +55,23 @@ func Read(v *viper.Viper) (*Config, error) {
 	return cfg, nil
 }
 
-// WriteDefault attempts to write the default config options to a file at the
-// give path.
-func WriteDefault(v *viper.Viper, file string) error {
-	setDefaultConfig(v)
-	cfg := &Config{}
-	if err := v.Unmarshal(cfg); err != nil {
-		return err
+// Write attempts to write the config options to the file at the give dest.
+func Write(cfg *Config, dest string) error {
+	if cfg == nil {
+		return fmt.Errorf("passed nil config")
 	}
 
 	// using yaml encoder to write the configuration file in `camelCase`.
 	const errFmt = "failed to write config: %w"
-	f, err := os.Create(file)
+	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf(errFmt, err)
 	}
 
-	defer f.Close()
-	e := yaml.NewEncoder(f)
-	if err := e.Encode(cfg); err != nil {
-		return fmt.Errorf(errFmt, err)
-	}
-
-	if err := e.Close(); err != nil {
+	err = os.WriteFile(dest, data, os.ModePerm)
+	if err != nil {
 		return fmt.Errorf(errFmt, err)
 	}
 
 	return nil
-}
-
-func setDefaultConfig(v *viper.Viper) {
-	v.SetDefault("service.awsSes.useSharedConfig", true)
-	v.SetDefault("service.rateLimit", 14)
-	v.SetDefault("service.retries", 3)
-	v.SetDefault("message.sender", "Iris CLI <iris@example.test>")
-	v.SetDefault("message.defaultDataCsvFile", "default.csv")
-	v.SetDefault("message.recipientDataCsvFile", "recipient.csv")
-	v.SetDefault("message.recipientEmailColumnName", "Recipient")
-	v.SetDefault("message.minifyHtml", true)
 }

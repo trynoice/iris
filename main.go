@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/trynoice/iris/internal/cmd"
-	"github.com/trynoice/iris/internal/config"
 )
 
 const (
@@ -19,12 +17,6 @@ func main() {
 	v := viper.New()
 	v.SetConfigName(configName)
 	v.SetConfigType(configType)
-	v.AddConfigPath(".")
-	cfg, err := config.Read(v)
-	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
 
 	rootCmd := &cobra.Command{
 		Use:          "iris",
@@ -33,7 +25,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand(cmd.InitCommand(v, configName+"."+configType))
-	rootCmd.AddCommand(cmd.SendCommand(cfg))
+	rootCmd.AddCommand(cmd.SendCommand(v))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

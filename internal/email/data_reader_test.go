@@ -2,7 +2,6 @@ package email_test
 
 import (
 	"io"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,27 +10,35 @@ import (
 )
 
 func TestDataReader(t *testing.T) {
-	const defaultCsv = "col1,col2\nabc,def"
-	const dataCsv = "col2,col3\nghi,jkl\nmno,pqr"
+	const defaultFile = "default.csv"
+	const defaultFileContent = "col1,col2\nabc,def"
+	const dataFile = "data.csv"
+	const dataFileContent = "col2,col3\nghi,jkl\nmno,pqr"
 
-	t.Run("WithoutDataFile", func(t *testing.T) {
+	t.Run("WithNonExistingDataFile", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		testutil.CreateFile(t, tmpDir, "default.csv", defaultCsv)
+		testutil.CreateFile(t, tmpDir, defaultFile, defaultFileContent)
 
-		defaultFile := filepath.Join(tmpDir, "default.csv")
-		dataFile := filepath.Join(tmpDir, "data.csv")
-		r, err := email.NewDataReader(defaultFile, dataFile)
+		r, err := email.NewDataReader(tmpDir, defaultFile, dataFile)
+		assert.Error(t, err)
+		assert.Nil(t, r)
+	})
+
+	t.Run("WithNonExistingDefaultFile", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		testutil.CreateFile(t, tmpDir, dataFile, dataFileContent)
+
+		r, err := email.NewDataReader(tmpDir, defaultFile, dataFile)
 		assert.Error(t, err)
 		assert.Nil(t, r)
 	})
 
 	t.Run("WithoutDefaultFile", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		testutil.CreateFile(t, tmpDir, "data.csv", dataCsv)
+		testutil.CreateFile(t, tmpDir, defaultFile, defaultFileContent)
+		testutil.CreateFile(t, tmpDir, dataFile, dataFileContent)
 
-		defaultFile := filepath.Join(tmpDir, "default.csv")
-		dataFile := filepath.Join(tmpDir, "data.csv")
-		r, err := email.NewDataReader(defaultFile, dataFile)
+		r, err := email.NewDataReader(tmpDir, "", dataFile)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 
@@ -53,12 +60,10 @@ func TestDataReader(t *testing.T) {
 
 	t.Run("WithDefaultFile", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		testutil.CreateFile(t, tmpDir, "default.csv", defaultCsv)
-		testutil.CreateFile(t, tmpDir, "data.csv", dataCsv)
+		testutil.CreateFile(t, tmpDir, defaultFile, defaultFileContent)
+		testutil.CreateFile(t, tmpDir, dataFile, dataFileContent)
 
-		defaultFile := filepath.Join(tmpDir, "default.csv")
-		dataFile := filepath.Join(tmpDir, "data.csv")
-		r, err := email.NewDataReader(defaultFile, dataFile)
+		r, err := email.NewDataReader(tmpDir, defaultFile, dataFile)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 

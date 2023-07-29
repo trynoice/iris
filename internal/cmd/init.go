@@ -4,61 +4,109 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/trynoice/iris/internal/config"
 )
 
+var defaultConfig = &config.Config{
+	Service: config.ServiceConfig{
+		AwsSes: &config.AwsSesServiceConfig{
+			UseSharedConfig: true,
+		},
+		RateLimit: 10,
+		Retries:   3,
+	},
+	Message: config.MessageConfig{
+		Sender:                   "Iris CLI <iris@example.test>",
+		DefaultDataCsvFile:       "default.csv",
+		RecipientDataCsvFile:     "recipients.csv",
+		RecipientEmailColumnName: "Email",
+		MinifyHtml:               true,
+	},
+}
+
 var defaultEmailFiles = map[string]string{
-	"subject.txt": "Hello {{ .Name }}",
+	"subject.txt": "Hello {{.Name}}",
 	"body.txt": `Iris is a CLI tool for sending templated bulk emails.
 
-You can inject data into templates, e.g. a date - {{ .Date }} or your email - {{ .Recipient }}.`,
+You can inject data into templates, e.g. a date - {{.Date}} or your email - {{.Email}}.`,
 
 	"body.html": `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Hello {{ .Name }}</title>
+    <title>Hello {{.Name}}</title>
   </head>
   <body>
     <p>Iris is a CLI tool for sending templated bulk emails.</p>
     <p>
-      You can inject data into templates, e.g. a date - {{ .Date }} or your
-      email - {{ .Recipient }}.
+      You can inject data into templates, e.g. a date - {{.Date}} or your
+      email - {{.Email}}.
     </p>
   </body>
 </html>`,
 
-	"default.csv":   "Date\nJanuary 2006",
-	"recipient.csv": "Name,Recipient\nJohn,hello@example.test",
+	"default.csv":    "Date\nJanuary 2006",
+	"recipients.csv": "Name,Email\nJack,jack@example.test\nJill,jill@example.test",
 }
 
 func InitCommand(v *viper.Viper, configFileName string) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "init <dir>",
+		Use:   "init [dir]",
 		Short: "Create working files in the given directory",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if notExists(args[0]) {
-				cmd.Println("creating directory", args[0])
-				if err := os.MkdirAll(args[0], os.ModeDir|os.ModePerm); err != nil {
+			wd := "."
+			if len(args) > 0 {
+				wd = args[0]
+			}
+
+			v.AddConfigPath(wd)
+			cfg, err := config.Read(v)
+			if err != nil {
+				return err
+			}
+
+			if notExists(wd) {
+				cmd.Println("creating directory", wd)
+				if err := os.MkdirAll(wd, os.ModeDir|os.ModePerm); err != nil {
 					return fmt.Errorf("failed to create directory: %w", err)
 				}
 			}
 
-			cfgFile := filepath.Join(args[0], configFileName)
+			cfgFile := filepath.Join(wd, configFileName)
 			if notExists(cfgFile) {
+				// consider this default configuration for generating all files
+				// if user didn't supply a config.
+				cfg = defaultConfig
 				cmd.Println("creating file", cfgFile)
-				if err := config.WriteDefault(v, cfgFile); err != nil {
+				if err := config.Write(defaultConfig, cfgFile); err != nil {
 					return fmt.Errorf("failed to write default config: %w", err)
 				}
 			}
 
 			for name, content := range defaultEmailFiles {
-				file := filepath.Join(args[0], name)
+				switch name {
+				case "default.csv":
+					name = cfg.Message.DefaultDataCsvFile
+					content = strings.ReplaceAll(content, "Email", cfg.Message.RecipientEmailColumnName)
+				case "recipients.csv":
+					name = cfg.Message.RecipientDataCsvFile
+					content = strings.ReplaceAll(content, "Email", cfg.Message.RecipientEmailColumnName)
+				default:
+					replacement := fmt.Sprintf("{{.%s}}", cfg.Message.RecipientEmailColumnName)
+					content = strings.ReplaceAll(content, "{{.Email}}", replacement)
+				}
+
+				if name == "" { // defaults csv is optional
+					continue
+				}
+
+				file := filepath.Join(wd, name)
 				if notExists(file) {
 					cmd.Println("creating file", file)
 					if err := os.WriteFile(file, []byte(content), os.ModePerm); err != nil {
