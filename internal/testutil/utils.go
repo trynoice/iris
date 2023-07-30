@@ -14,13 +14,15 @@ import (
 func CreateFile(t *testing.T, dir string, file string, content string) {
 	p := filepath.Join(dir, file)
 	err := os.WriteFile(p, []byte(content), os.ModePerm)
-
-	require.Nil(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		os.Remove(p)
+		require.NoError(t, os.Remove(p))
 	})
 }
 
+// Chdir changes the current working directory to the named directory and
+// registers a cleanup function on the provided `t` to restore working directory
+// to its initial value once the test completes.
 func Chdir(t *testing.T, dir string) {
 	original, err := os.Getwd()
 	require.NoError(t, err)

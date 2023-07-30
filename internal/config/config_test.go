@@ -22,7 +22,7 @@ func TestRead(t *testing.T) {
 
 		// must return default values without an error
 		got, err := config.Read(v)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.NotEmpty(t, got.Service.RateLimit)
 		assert.NotEmpty(t, got.Message.MinifyHtml)
 	})
@@ -39,10 +39,10 @@ func TestRead(t *testing.T) {
 		}
 
 		cfgData, err := yaml.Marshal(want)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err = os.WriteFile(filepath.Join(tmpDir, ".iris.yaml"), cfgData, os.ModePerm)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		v := viper.New()
 		v.AddConfigPath(tmpDir)
@@ -50,7 +50,7 @@ func TestRead(t *testing.T) {
 		v.SetConfigType("yaml")
 
 		got, err := config.Read(v)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		// must return overridden values
 		assert.Equal(t, want.Service.RateLimit, got.Service.RateLimit)
@@ -83,10 +83,10 @@ func TestWrite(t *testing.T) {
 	tmpDir := t.TempDir()
 	cfgFile := filepath.Join(tmpDir, ".iris.yaml")
 	err := config.Write(want, cfgFile)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	gotData, err := os.ReadFile(cfgFile)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	got := &config.Config{}
 	err = yaml.Unmarshal(gotData, got)
