@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,39 +17,48 @@ func TestAwsSesService(t *testing.T) {
 	t.Run("WithNilMessage", func(t *testing.T) {
 		c := &FakeAwsSesClient{RespondWithOutput: &ses.SendEmailOutput{}}
 		s := email.NewAwsSesServiceWithClient(c)
-		err := s.Send("test-from", "test-to", nil)
+		err := s.Send(&email.SendOptions{
+			From: "test-from",
+			To:   "test-to",
+		})
 		assert.Error(t, err)
 	})
 
 	t.Run("WithUpstreamError", func(t *testing.T) {
 		c := &FakeAwsSesClient{RespondWithError: fmt.Errorf("test-error")}
 		s := email.NewAwsSesServiceWithClient(c)
-		err := s.Send("test-from", "test-to", &email.Message{})
+		err := s.Send(&email.SendOptions{
+			From:    "test-from",
+			To:      "test-to",
+			Message: &email.Message{},
+		})
 		assert.Error(t, err)
 	})
 
 	t.Run("WithNoError", func(t *testing.T) {
-		const from = "test-from"
-		const to = "test-to"
-		const subject = "test-subject"
-		const textBody = "test-text-body"
-		const htmlBody = "test-html-body"
+		sendOpts := &email.SendOptions{
+			From:    "test-from",
+			To:      "test-to",
+			ReplyTo: []string{"test-reply-to"},
+			Message: &email.Message{
+				Subject:  "test-subject",
+				TextBody: "test-text-body",
+				HtmlBody: "test-html-body",
+			},
+		}
+
 		c := &FakeAwsSesClient{RespondWithOutput: &ses.SendEmailOutput{}}
 		s := email.NewAwsSesServiceWithClient(c)
-		err := s.Send(from, to, &email.Message{
-			Subject:  subject,
-			TextBody: textBody,
-			HtmlBody: htmlBody,
-		})
-
+		err := s.Send(sendOpts)
 		assert.NoError(t, err)
 
 		i := c.LastSendEmailInput
-		assert.Equal(t, from, *i.Source)
-		assert.Equal(t, to, *i.Destination.ToAddresses[0])
-		assert.Equal(t, subject, *i.Message.Subject.Data)
-		assert.Equal(t, textBody, *i.Message.Body.Text.Data)
-		assert.Equal(t, htmlBody, *i.Message.Body.Html.Data)
+		assert.Equal(t, sendOpts.From, *i.Source)
+		assert.Equal(t, sendOpts.To, *i.Destination.ToAddresses[0])
+		assert.Equal(t, sendOpts.ReplyTo, aws.StringValueSlice(i.ReplyToAddresses))
+		assert.Equal(t, sendOpts.Message.Subject, *i.Message.Subject.Data)
+		assert.Equal(t, sendOpts.Message.TextBody, *i.Message.Body.Text.Data)
+		assert.Equal(t, sendOpts.Message.HtmlBody, *i.Message.Body.Html.Data)
 	})
 }
 
@@ -65,24 +75,25 @@ func (c *FakeAwsSesClient) SendEmail(input *ses.SendEmailInput) (*ses.SendEmailO
 }
 
 func TestPrintService(t *testing.T) {
-	const subject = "test-subject"
-	const textBody = "test-text-body"
-	const htmlBody = "test-html-body"
+	sendOpts := &email.SendOptions{
+		From: "test-from",
+		To:   "test-to",
+		Message: &email.Message{
+			Subject:  "test-subject",
+			TextBody: "test-text-body",
+			HtmlBody: "test-html-body",
+		},
+	}
 
 	b := &bytes.Buffer{}
 	s := email.NewPrintService(b)
-	err := s.Send("test-from", "test-to", &email.Message{
-		Subject:  subject,
-		TextBody: textBody,
-		HtmlBody: htmlBody,
-	})
-
+	err := s.Send(sendOpts)
 	assert.NoError(t, err)
 
 	out := b.String()
-	assert.Contains(t, out, subject)
-	assert.Contains(t, out, textBody)
-	assert.Contains(t, out, htmlBody)
+	assert.Contains(t, out, sendOpts.Message.Subject)
+	assert.Contains(t, out, sendOpts.Message.TextBody)
+	assert.Contains(t, out, sendOpts.Message.HtmlBody)
 }
 
 func TestRateLimitedService(t *testing.T) {
@@ -90,7 +101,11 @@ func TestRateLimitedService(t *testing.T) {
 	s = email.ApplyOptions(s, email.WithRateLimit(1))
 	then := time.Now()
 	for i := 0; i < 5; i++ {
-		err := s.Send("test", "test", &email.Message{})
+		err := s.Send(&email.SendOptions{
+			From:    "test-from",
+			To:      "test-to",
+			Message: &email.Message{},
+		})
 		require.NoError(t, err)
 	}
 
@@ -135,7 +150,11 @@ func TestRetryService(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var s email.Service = &unreliableService{errorsBeforeSucceeding: test.errorCount}
 			s = email.ApplyOptions(s, email.WithRetries(test.retryCount))
-			err := s.Send("test", "test", &email.Message{})
+			err := s.Send(&email.SendOptions{
+				From:    "test-from",
+				To:      "test-to",
+				Message: &email.Message{},
+			})
 			if test.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -149,7 +168,7 @@ type unreliableService struct {
 	errorsBeforeSucceeding int
 }
 
-func (s *unreliableService) Send(from string, to string, m *email.Message) error {
+func (s *unreliableService) Send(opts *email.SendOptions) error {
 	s.errorsBeforeSucceeding--
 	if s.errorsBeforeSucceeding > -1 {
 		return fmt.Errorf("test-error")

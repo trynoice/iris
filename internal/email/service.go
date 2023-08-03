@@ -16,7 +16,14 @@ import (
 )
 
 type Service interface {
-	Send(from string, to string, m *Message) error
+	Send(opts *SendOptions) error
+}
+
+type SendOptions struct {
+	From    string
+	To      string
+	ReplyTo []string
+	Message *Message
 }
 
 type ServiceOption func(upstream Service) Service
@@ -58,32 +65,36 @@ type awsSesService struct {
 	client AwsSesClient
 }
 
-func (s *awsSesService) Send(from string, to string, m *Message) error {
-	if m == nil {
+func (s *awsSesService) Send(opts *SendOptions) error {
+	if opts == nil {
+		return fmt.Errorf("send options must not be nil")
+	}
+
+	if opts.Message == nil {
 		return fmt.Errorf("message must not be nil")
 	}
 
 	if _, err := s.client.SendEmail(&ses.SendEmailInput{
-		Source: aws.String(from),
+		Source: aws.String(opts.From),
 		Destination: &ses.Destination{
-			CcAddresses: []*string{},
 			ToAddresses: []*string{
-				aws.String(to),
+				aws.String(opts.To),
 			},
 		},
+		ReplyToAddresses: aws.StringSlice(opts.ReplyTo),
 		Message: &ses.Message{
 			Subject: &ses.Content{
 				Charset: aws.String("utf-8"),
-				Data:    aws.String(m.Subject),
+				Data:    aws.String(opts.Message.Subject),
 			},
 			Body: &ses.Body{
 				Text: &ses.Content{
 					Charset: aws.String("utf-8"),
-					Data:    aws.String(m.TextBody),
+					Data:    aws.String(opts.Message.TextBody),
 				},
 				Html: &ses.Content{
 					Charset: aws.String("utf-8"),
-					Data:    aws.String(m.HtmlBody),
+					Data:    aws.String(opts.Message.HtmlBody),
 				},
 			},
 		},
@@ -102,8 +113,12 @@ type printService struct {
 	w io.Writer
 }
 
-func (s *printService) Send(from string, to string, m *Message) error {
-	if m == nil {
+func (s *printService) Send(opts *SendOptions) error {
+	if opts == nil {
+		return fmt.Errorf("send options must not be nil")
+	}
+
+	if opts.Message == nil {
 		return fmt.Errorf("message must not be nil")
 	}
 
@@ -121,9 +136,9 @@ func (s *printService) Send(from string, to string, m *Message) error {
 	tw.SetAutoWrapText(false)
 	tw.SetRowLine(true)
 	tw.AppendBulk([][]string{
-		{"Subject", wordwrap.WrapString(m.Subject, uint(pw))},
-		{"Text Body", wordwrap.WrapString(m.TextBody, uint(pw))},
-		{"HTML Body", wordwrap.WrapString(m.HtmlBody, uint(pw))},
+		{"Subject", wordwrap.WrapString(opts.Message.Subject, uint(pw))},
+		{"Text Body", wordwrap.WrapString(opts.Message.TextBody, uint(pw))},
+		{"HTML Body", wordwrap.WrapString(opts.Message.HtmlBody, uint(pw))},
 	})
 	tw.Render()
 	return nil
@@ -151,9 +166,9 @@ type rateLimitedService struct {
 	limiter  ratelimit.Limiter
 }
 
-func (s *rateLimitedService) Send(from string, to string, m *Message) error {
+func (s *rateLimitedService) Send(opts *SendOptions) error {
 	s.limiter.Take()
-	return s.upstream.Send(from, to, m)
+	return s.upstream.Send(opts)
 }
 
 func WithRetries(retryCount int) ServiceOption {
@@ -170,10 +185,10 @@ type retryService struct {
 	retryCount int
 }
 
-func (s *retryService) Send(from string, to string, m *Message) error {
+func (s *retryService) Send(opts *SendOptions) error {
 	var err error
 	for i := 0; i <= s.retryCount; i++ {
-		err = s.upstream.Send(from, to, m)
+		err = s.upstream.Send(opts)
 		if err == nil {
 			break
 		}
@@ -182,6 +197,8 @@ func (s *retryService) Send(from string, to string, m *Message) error {
 	return err
 }
 
+// ApplyOptions wraps the given `upstream` service in the given service options
+// (decorators).
 func ApplyOptions(upstream Service, opts ...ServiceOption) Service {
 	s := upstream
 	for _, option := range opts {

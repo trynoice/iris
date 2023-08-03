@@ -69,15 +69,17 @@ func SendCommand(v *viper.Viper) *cobra.Command {
 					return err
 				}
 
-				e, err := t.Render(recipientData)
+				msg, err := t.Render(recipientData)
 				if err != nil {
 					return err
 				}
 
-				sender := cfg.Message.Sender
-				recipient := recipientData[cfg.Message.RecipientEmailColumnName]
-				cmd.Println("dispatching to", recipient)
-				if err := svc.Send(sender, recipient, e); err != nil {
+				if err := svc.Send(&email.SendOptions{
+					From:    cfg.Message.Sender,
+					To:      recipientData[cfg.Message.RecipientEmailColumnName],
+					ReplyTo: cfg.Message.ReplyToAddresses,
+					Message: msg,
+				}); err != nil {
 					return err
 				}
 			}

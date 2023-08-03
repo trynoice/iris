@@ -26,11 +26,12 @@ type AwsSesServiceConfig struct {
 }
 
 type MessageConfig struct {
-	Sender                   string `yaml:"sender,omitempty"`
-	DefaultDataCsvFile       string `yaml:"defaultDataCsvFile,omitempty"`
-	RecipientDataCsvFile     string `yaml:"recipientDataCsvFile,omitempty"`
-	RecipientEmailColumnName string `yaml:"recipientEmailColumnName,omitempty"`
-	MinifyHtml               bool   `yaml:"minifyHtml,omitempty"`
+	Sender                   string   `yaml:"sender,omitempty"`
+	ReplyToAddresses         []string `yaml:"replyToAddresses,omitempty"`
+	DefaultDataCsvFile       string   `yaml:"defaultDataCsvFile,omitempty"`
+	RecipientDataCsvFile     string   `yaml:"recipientDataCsvFile,omitempty"`
+	RecipientEmailColumnName string   `yaml:"recipientEmailColumnName,omitempty"`
+	MinifyHtml               bool     `yaml:"minifyHtml,omitempty"`
 }
 
 // Read attempts to read the config file in the current working directory. It

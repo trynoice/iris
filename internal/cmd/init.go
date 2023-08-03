@@ -21,6 +21,7 @@ var defaultConfig = &config.Config{
 	},
 	Message: config.MessageConfig{
 		Sender:                   "Iris CLI <iris@example.test>",
+		ReplyToAddresses:         []string{"inbox@example.test", "another@example.test"},
 		DefaultDataCsvFile:       "default.csv",
 		RecipientDataCsvFile:     "recipients.csv",
 		RecipientEmailColumnName: "Email",
