@@ -9,6 +9,7 @@ Iris is a CLI tool for dispatching templated emails.
 ## Supported Services
 
 - AWS SES
+- SMTP
 
 ## Install
 
@@ -48,35 +49,53 @@ creating file sample-email/default.csv
 - `body.html`: A [Go Template](https://pkg.go.dev/text/template) containing the
   body of the email in HTML format.
 - `recipients.csv`: Data for rendering the email templates.
-- `default.csv`: Fallback values for missing values in recipients' data file.
-  You can also use it to inject data that remains the same for all recipients.
+- `default.csv`: Optional fallback values for missing values in recipients' data
+  file. You can also use it to inject data that remains the same for all
+  recipients.
 
 ### Configuration
 
 ```yaml
 service:
+    # If using AWS SES backend.
     awsSes:
-        # If `true`, automatically load AWS configuration from ~/.aws or env
-        # vars.
+        # If `true`, automatically load AWS configuration from ~/.aws or env vars.
         useSharedConfig: true
-        # AWS region to for SES if `useSharedConfig` is `false`.
+        # AWS region for SES if `useSharedConfig` is `false`.
         region:
         # AWS configuration profile if `useSharedConfig` is `false`.
         profile:
+
+    # If using SMTP server backend.
+    smtp:
+        # Host name of the smtp server.
+        host:
+        # Port of the smtp server.
+        port:
+        # Username for authenticating on the smtp server.
+        username:
+        # Password for authenticating on the smtp server.
+        password:
+        # One of 'none', 'ssl', 'tls', 'ssl/tls' (default), 'starttls'.
+        encryption:
+
     # API calls per second.
     rateLimit: 10
     # Number of retries before exiting with error on failing an API call.
     retries: 3
 message:
-    # Email FROM header.
+    # An address for the 'From' email header.
     sender: Iris CLI <iris@trynoice.com>
+    # A list of addresses for the 'Reply-To' email header.
+    replyToAddresses:
+        - Noice App <trynoiceapp@gmail.com>
     # Data for rendering the email templates. It must be in the same directory
     # as this configuration.
     recipientDataCsvFile: recipients.csv
-    # Fallback values for missing values in recipients' data file. You can also
-    # use it to inject data that remains the same for all recipients. It must be
-    # in the same directory as this configuration. It must contain only two
-    # rows: headers and values.
+    # (Optional) Fallback values for missing values in recipients' data file.
+    # You can also use it to inject data that remains the same for all
+    # recipients. It must be in the same directory as this configuration. It
+    # must contain only two rows: headers and values.
     defaultDataCsvFile: default.csv
     # Name of the column containing emails of recipients in `recipients.csv`.
     recipientEmailColumnName: Email
