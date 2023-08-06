@@ -15,6 +15,7 @@ type Config struct {
 
 type ServiceConfig struct {
 	AwsSes    *AwsSesServiceConfig `yaml:"awsSes,omitempty"`
+	Smtp      *SmtpServiceConfig   `yaml:"smtp,omitempty"`
 	RateLimit int                  `yaml:"rateLimit,omitempty"`
 	Retries   int                  `yaml:"retries,omitempty"`
 }
@@ -23,6 +24,14 @@ type AwsSesServiceConfig struct {
 	UseSharedConfig bool   `yaml:"useSharedConfig,omitempty"`
 	Region          string `yaml:"region,omitempty"`
 	Profile         string `yaml:"profile,omitempty"`
+}
+
+type SmtpServiceConfig struct {
+	Host       string `yaml:"host,omitempty"`
+	Port       int    `yaml:"port,omitempty"`
+	Username   string `yaml:"username,omitempty"`
+	Password   string `yaml:"password,omitempty"`
+	Encryption string `yaml:"encryption,omitempty"`
 }
 
 type MessageConfig struct {

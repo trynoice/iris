@@ -3,6 +3,7 @@ package email
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -11,18 +12,20 @@ import (
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/olekukonko/tablewriter"
 	"github.com/trynoice/iris/internal/config"
+	mail "github.com/xhit/go-simple-mail/v2"
 	"go.uber.org/ratelimit"
 	"golang.org/x/term"
 )
 
 type Service interface {
 	Send(opts *SendOptions) error
+	io.Closer
 }
 
 type SendOptions struct {
 	From    string
-	To      string
 	ReplyTo []string
+	To      string
 	Message *Message
 }
 
@@ -75,13 +78,13 @@ func (s *awsSesService) Send(opts *SendOptions) error {
 	}
 
 	if _, err := s.client.SendEmail(&ses.SendEmailInput{
-		Source: aws.String(opts.From),
+		Source:           aws.String(opts.From),
+		ReplyToAddresses: aws.StringSlice(opts.ReplyTo),
 		Destination: &ses.Destination{
 			ToAddresses: []*string{
 				aws.String(opts.To),
 			},
 		},
-		ReplyToAddresses: aws.StringSlice(opts.ReplyTo),
 		Message: &ses.Message{
 			Subject: &ses.Content{
 				Charset: aws.String("utf-8"),
@@ -103,6 +106,97 @@ func (s *awsSesService) Send(opts *SendOptions) error {
 	}
 
 	return nil
+}
+
+func (s *awsSesService) Close() error {
+	return nil
+}
+
+func NewSmtpService(cfg *config.SmtpServiceConfig, opts ...ServiceOption) (Service, error) {
+	c := mail.NewSMTPClient()
+	c.Host = cfg.Host
+	c.Port = cfg.Port
+	c.Username = cfg.Username
+	c.Password = cfg.Password
+	c.KeepAlive = true
+
+	switch strings.ToLower(cfg.Encryption) {
+	case "none":
+		c.Encryption = mail.EncryptionNone
+	case "ssl":
+		c.Encryption = mail.EncryptionSSL
+	case "tls":
+		c.Encryption = mail.EncryptionTLS
+	case "", "ssl/tls":
+		c.Encryption = mail.EncryptionSSLTLS
+	case "starttls":
+		c.Encryption = mail.EncryptionSTARTTLS
+	default:
+		return nil, fmt.Errorf("unrecognised smtp encryption type: %s", cfg.Encryption)
+	}
+
+	client, err := c.Connect()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to smtp server: %w", err)
+	}
+
+	return NewSmtpServiceWithClient(&smtpClientImpl{client}, opts...), nil
+}
+
+func NewSmtpServiceWithClient(client SmtpClient, opts ...ServiceOption) Service {
+	return ApplyOptions(&smtpService{client: client}, opts...)
+}
+
+type smtpService struct {
+	client SmtpClient
+}
+
+func (s *smtpService) Send(opts *SendOptions) error {
+	if opts == nil {
+		return fmt.Errorf("send options must not be nil")
+	}
+
+	if opts.Message == nil {
+		return fmt.Errorf("message must not be nil")
+	}
+
+	e := mail.NewMSG().
+		SetFrom(opts.From).
+		AddTo(opts.To).
+		SetSubject(opts.Message.Subject).
+		SetBody(mail.TextPlain, opts.Message.TextBody).
+		AddAlternative(mail.TextHTML, opts.Message.HtmlBody)
+
+	if len(opts.ReplyTo) > 0 {
+		e.SetReplyTo(strings.Join(opts.ReplyTo, ", "))
+	}
+
+	if err := s.client.SendEmail(e); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *smtpService) Close() error {
+	return s.client.Close()
+}
+
+type SmtpClient interface {
+	SendEmail(email *mail.Email) error
+	io.Closer
+}
+
+type smtpClientImpl struct {
+	client *mail.SMTPClient
+}
+
+func (c *smtpClientImpl) SendEmail(email *mail.Email) error {
+	return email.Send(c.client)
+}
+
+func (c *smtpClientImpl) Close() error {
+	return c.client.Close()
 }
 
 func NewPrintService(w io.Writer, opts ...ServiceOption) Service {
@@ -144,6 +238,10 @@ func (s *printService) Send(opts *SendOptions) error {
 	return nil
 }
 
+func (s *printService) Close() error {
+	return nil
+}
+
 func getTerminalWidth(defaultW int) int {
 	w, _, err := term.GetSize(0)
 	if err != nil {
@@ -171,6 +269,10 @@ func (s *rateLimitedService) Send(opts *SendOptions) error {
 	return s.upstream.Send(opts)
 }
 
+func (s *rateLimitedService) Close() error {
+	return s.upstream.Close()
+}
+
 func WithRetries(retryCount int) ServiceOption {
 	return func(upstream Service) Service {
 		return &retryService{
@@ -195,6 +297,10 @@ func (s *retryService) Send(opts *SendOptions) error {
 	}
 
 	return err
+}
+
+func (s *retryService) Close() error {
+	return s.upstream.Close()
 }
 
 // ApplyOptions wraps the given `upstream` service in the given service options

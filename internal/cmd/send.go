@@ -46,20 +46,26 @@ func SendCommand(v *viper.Viper) *cobra.Command {
 				email.WithRetries(cfg.Service.Retries),
 			}
 
+			if !isDryRun && !askConfirmation("confirm sending emails?", cmd.InOrStdin(), cmd.OutOrStdout()) {
+				return nil
+			}
+
 			var svc email.Service
 			if isDryRun {
 				svc = email.NewPrintService(cmd.OutOrStdout(), opts...)
 			} else if cfg.Service.AwsSes != nil {
 				if svc, err = email.NewAwsSesService(cfg.Service.AwsSes, opts...); err != nil {
-					return fmt.Errorf("failed to initialise aws ses client: %w", err)
+					return fmt.Errorf("failed to initialise aws ses service: %w", err)
+				}
+			} else if cfg.Service.Smtp != nil {
+				if svc, err = email.NewSmtpService(cfg.Service.Smtp, opts...); err != nil {
+					return fmt.Errorf("failed to initialise smtp service: %w", err)
 				}
 			} else {
 				return fmt.Errorf("cannot select a suitable emailing service based on the provided configuration")
 			}
 
-			if !isDryRun && !askSendEmailConfirmation(cmd.InOrStdin(), cmd.OutOrStdout()) {
-				return nil
-			}
+			defer svc.Close()
 
 			for {
 				recipientData, err := r.Read()
@@ -91,10 +97,10 @@ func SendCommand(v *viper.Viper) *cobra.Command {
 	return c
 }
 
-func askSendEmailConfirmation(in io.Reader, out io.Writer) bool {
+func askConfirmation(msg string, in io.Reader, out io.Writer) bool {
 	reader := bufio.NewReader(in)
 	for {
-		fmt.Fprint(out, "confirm sending emails? [y/n] ")
+		fmt.Fprintf(out, "%s [y/n] ", msg)
 		answer, _ := reader.ReadString('\n')
 		answer = strings.ToLower(strings.TrimSpace(answer))
 		if answer == "y" || answer == "yes" {

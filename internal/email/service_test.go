@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/trynoice/iris/internal/email"
+	mail "github.com/xhit/go-simple-mail/v2"
 )
 
 func TestAwsSesService(t *testing.T) {
@@ -72,6 +73,63 @@ type FakeAwsSesClient struct {
 func (c *FakeAwsSesClient) SendEmail(input *ses.SendEmailInput) (*ses.SendEmailOutput, error) {
 	c.LastSendEmailInput = input
 	return c.RespondWithOutput, c.RespondWithError
+}
+
+func TestSmtpService(t *testing.T) {
+	t.Run("WithNilMessage", func(t *testing.T) {
+		c := &FakeSmtpClient{RespondWithError: nil}
+		s := email.NewSmtpServiceWithClient(c)
+		err := s.Send(&email.SendOptions{
+			From: "test-from",
+			To:   "test-to",
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("WithUpstreamError", func(t *testing.T) {
+		c := &FakeSmtpClient{RespondWithError: fmt.Errorf("test-error")}
+		s := email.NewSmtpServiceWithClient(c)
+		err := s.Send(&email.SendOptions{
+			From:    "test-from",
+			To:      "test-to",
+			Message: &email.Message{},
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("WithNoError", func(t *testing.T) {
+		sendOpts := &email.SendOptions{
+			From:    "test-from",
+			To:      "test-to",
+			ReplyTo: []string{"test-reply-to"},
+			Message: &email.Message{
+				Subject:  "test-subject",
+				TextBody: "test-text-body",
+				HtmlBody: "test-html-body",
+			},
+		}
+
+		c := &FakeSmtpClient{RespondWithError: nil}
+		s := email.NewSmtpServiceWithClient(c)
+		err := s.Send(sendOpts)
+		assert.NoError(t, err)
+		assert.NotNil(t, c.LastSentEmail)
+		// TODO: figure out a way to check email data.
+	})
+}
+
+type FakeSmtpClient struct {
+	RespondWithError error
+	LastSentEmail    *mail.Email
+}
+
+func (c *FakeSmtpClient) SendEmail(email *mail.Email) error {
+	c.LastSentEmail = email
+	return c.RespondWithError
+}
+
+func (c *FakeSmtpClient) Close() error {
+	return nil
 }
 
 func TestPrintService(t *testing.T) {
@@ -173,5 +231,9 @@ func (s *unreliableService) Send(opts *email.SendOptions) error {
 	if s.errorsBeforeSucceeding > -1 {
 		return fmt.Errorf("test-error")
 	}
+	return nil
+}
+
+func (s *unreliableService) Close() error {
 	return nil
 }
