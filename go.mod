@@ -12,7 +12,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.20.8
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	go.uber.org/ratelimit v0.3.0
-	golang.org/x/term v0.13.0
+	golang.org/x/term v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
