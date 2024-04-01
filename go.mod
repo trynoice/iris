@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
-	github.com/tdewolff/minify/v2 v2.20.18
+	github.com/tdewolff/minify/v2 v2.20.19
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	go.uber.org/ratelimit v0.3.0
 	golang.org/x/term v0.17.0
