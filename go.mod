@@ -3,7 +3,7 @@ module github.com/trynoice/iris
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.50.30
+	github.com/aws/aws-sdk-go v1.51.32
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
