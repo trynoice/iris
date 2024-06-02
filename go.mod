@@ -8,7 +8,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tdewolff/minify/v2 v2.20.32
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	go.uber.org/ratelimit v0.3.0
