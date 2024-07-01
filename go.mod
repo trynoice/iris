@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
-	github.com/tdewolff/minify/v2 v2.20.32
+	github.com/tdewolff/minify/v2 v2.20.34
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	go.uber.org/ratelimit v0.3.1
 	golang.org/x/term v0.20.0
@@ -37,7 +37,7 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tdewolff/parse/v2 v2.7.14 // indirect
+	github.com/tdewolff/parse/v2 v2.7.15 // indirect
 	github.com/toorop/go-dkim v0.0.0-20201103131630-e1cd1a0a5208 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
